@@ -1,0 +1,18 @@
+{application, esprink,
+    [
+        {description, "Simple file caster"},
+        {vsn, "0.1"},
+        {registered, []},
+        {included_applications, [
+        ]},
+        {applications, [
+            kernel,
+            stdlib,
+            sync
+            ]},
+        {mod, {esprink_app, []}},
+        {env, [
+%%            {cast_ip, "0.0.0.0"},
+%%            {cast_port, 8080}
+        ]}
+    ]}.
