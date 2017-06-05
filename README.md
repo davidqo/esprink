@@ -40,3 +40,5 @@ What is not yet implemented, but designed for:
 NOTES:
 
 I purposely use bytes_per_second instead of bps because of the ambiguity of the latter (bytes_per_second? bits_per_second? bits_per_sample?).
+
+TODO: Move web server to the separate node

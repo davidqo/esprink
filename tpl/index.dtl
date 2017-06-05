@@ -1,0 +1,6 @@
+{% extends "layout.dtl" %}
+{% block content %}
+<h1 align="center">ESPRINK SERVER</h1>
+<div id="session_list"></div>
+<script type="text/javascript" src="js/session_list.js"></script>
+{% endblock %}

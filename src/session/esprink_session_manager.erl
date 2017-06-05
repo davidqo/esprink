@@ -18,12 +18,15 @@
 %%%-------------------------------------------------------------------
 -module(esprink_session_manager).
 
+-include("esprink.hrl").
+
 -behaviour(gen_server).
 
 %% API
 -export([
     start_link/0,
-    add_session/2
+    add_session/2,
+    get_session_list/0
 ]).
 
 %% gen_server callbacks
@@ -43,11 +46,6 @@
     sessions = [] :: list()
 }).
 
--record(add_session, {
-    session_id :: binary(),
-    options = [] :: list()
-}).
-
 -record(session, {
     id :: binary(),
     %% This is the ref of supervisor controlling this session.
@@ -61,6 +59,14 @@
 %%% API
 %%%===================================================================
 
+-record(add_session, {
+    session_id :: binary(),
+    options :: #{}
+}).
+
+-record(get_session_list, {
+}).
+
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
@@ -69,6 +75,10 @@ add_session(SessionId, Options) ->
     io:format("Add session ~p api call with options ~p~n", [SessionId, Options]),
     validate_session_id(SessionId),
     call(#add_session{session_id = SessionId, options = Options}).
+
+-spec get_session_list() -> [#esprink_session{}].
+get_session_list() ->
+    call(#get_session_list{}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -103,6 +113,10 @@ handle_call(#add_session{session_id = SessionId, options = Options}, _From, Stat
             io:format("Stacktrace: ~p~n", [erlang:get_stacktrace()]),
             {reply, {error, Exception}, State}
     end;
+handle_call(#get_session_list{}, _From, State = #state{sessions = Sessions}) ->
+    io:format("Get session list request~n", []),
+    SessionList = get_sessions_info(Sessions),
+    {reply, {ok, SessionList}, State};
 handle_call(Request, _From, State) ->
     io:format("Unknown request: ~p~n", [Request]),
     {reply, ok, State}.
@@ -150,6 +164,12 @@ validate_session_id(SessionId) when is_binary(SessionId) ->
     SessionId;
 validate_session_id(SessionId) ->
     throw({bad_session_id, SessionId}).
+
+get_sessions_info(Sessions) ->
+    [get_session_info(S) || S <- Sessions].
+
+get_session_info(#session{id = Id}) ->
+    #esprink_session{id = Id, source_type = file, status = active, options = #{}}.
 
 call(Command) ->
     gen_server:call(?SERVER, Command).

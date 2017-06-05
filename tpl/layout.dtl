@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Webserver</title>
+        <style>
+        #footer {
+            position: fixed;
+            left: 0; bottom: 0;
+            padding: 10px;
+            background: #39b54a;
+            color: #fff;
+            width: 100%;
+        }
+        </style>
+    </head>
+    <body>
+        {% block content %}{% endblock %}
+    </body>
+    <div id="footer">
+       &copy; Powered by Cowboy
+    </div>
+</html>

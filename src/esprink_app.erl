@@ -2,6 +2,7 @@
 %%% @author Dmitry Davidenko
 %%% @copyright (C) 2017
 %%% @doc
+%%% TODO: Move web server to the separate node
 %%% @end
 %%% Created : 04. Jun 2017 9:10
 %%%-------------------------------------------------------------------
@@ -32,6 +33,13 @@
 %% @end
 %%--------------------------------------------------------------------
 start() ->
+    application:ensure_all_started(cowboy),
+    Dispatch = dispatch_rules(),
+    Port = 18080,
+    {ok, _} = cowboy:start_clear(http_listener, 10,
+        [{port, Port}],
+        #{env => #{dispatch => Dispatch}}
+    ),
     application:ensure_all_started(esprink),
     application:start(esprink).
 
@@ -63,3 +71,24 @@ stop(_State) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+static_content_rule(Filetype) ->
+    {lists:append(["/", Filetype, "/[...]"]), cowboy_static,
+        {priv_dir, esprink, [list_to_binary(Filetype)], [
+            {mimetypes, cow_mimetypes, all}
+        ]}
+    }.
+%%+++++++++++++++++++++++++++++++++++++++++++++++++
+
+dispatch_rules() ->
+    cowboy_router:compile([
+        {'_', [
+            static_content_rule("css"),
+            static_content_rule("js"),
+            static_content_rule("img"),
+            {"/", esprink_index_handler, []},
+            {"/session_list", esprink_session_list_handler, []},
+            {'_', esprink_notfound_handler, []}
+        ]}
+    ]).
+%%+++++++++++++++++++++++++++++++++++++++++++++++++
