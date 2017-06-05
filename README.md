@@ -1,5 +1,6 @@
 # esprink
 File caster server.
+
 Client doesn't implemented yet.
 
 To build server you need:
@@ -18,24 +19,26 @@ esprink:add_session(<<"session1">>, #{filename => "testfile", bytes_per_sec => 1
 ```
 
 Optionally you can specify local_address and local_port options.
+
 It doesn't support multicast yet, but designed for this
 
 What is supported:
 
-1). Run several streams simultaneously;
-2). Run different sterams with different bytes_per_sec and mach_chunk_size options;
-3). Using the same file in the different streams;
-4). Fault-tolerance code
+1. Run several streams simultaneously
+1. Run different sterams with different bytes_per_sec and mach_chunk_size options
+1. Using the same file in the different streams
+1. Fault-tolerance code
+1. Draft HTTP server for currently running sessions monitoring
 
 What is not yet implemented, but designed for:
 
-1). Client. You can analize streams only through wireshark;
-2). Console command with command line interface;
-3). HTTP Server, showing currently running streams;
-4). Multicast streaming;
-5). Retransmissions on demand;
-6). Release building
-7). Logging
+1. Client. You can analize streams only through wireshark
+1. Console command with command line interface
+1. ~~HTTP Server, showing currently running streams~~
+1. Multicast streaming
+1. Retransmissions on demand
+1. Release building
+1. Logging
 
 NOTES:
 
