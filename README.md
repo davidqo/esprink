@@ -15,7 +15,7 @@ make run
 And enter this code in opened erlang console:
 
 ```erlang
-esprink:add_session(<<"session1">>, #{filename => "testfile", bytes_per_sec => 1024, max_chunk_size => 512, local_port => 9999, remote_port => 1111, remote_address => "192.168.23.46"}).
+esprink:add_session(<<"session1">>, #{filename => "testfile", bytes_per_sec => 1024, max_chunk_size => 512, remote_port => 1111, remote_address => "192.168.23.46"}).
 ```
 
 Optionally you can specify local_address and local_port options.
@@ -25,7 +25,7 @@ It doesn't support multicast yet, but designed for this
 What is supported:
 
 1. Run several streams simultaneously
-1. Run different sterams with different bytes_per_sec and mach_chunk_size options
+1. Run different sterams with different bytes_per_sec and max_chunk_size options
 1. Using the same file in the different streams
 1. Fault-tolerance code
 1. Draft HTTP server for currently running sessions monitoring
