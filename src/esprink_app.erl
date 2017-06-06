@@ -86,6 +86,7 @@ dispatch_rules() ->
             static_content_rule("css"),
             static_content_rule("js"),
             static_content_rule("img"),
+            static_content_rule("fonts"),
             {"/", esprink_index_handler, []},
             {"/session_list", esprink_session_list_handler, []},
             {'_', esprink_notfound_handler, []}

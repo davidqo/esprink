@@ -3,7 +3,7 @@
 //
 
 var print_session = function (session) {
-    return "<p><b>" + session.id + "</b><br>" + " source type: " + session.source_type + "; status: " + session.status + "<br>";
+  return ("<tr><td>" + session.id + "</td><td>" + session.source_type + "</td><td>" + session.status + "</td></tr>");
 }
 
 var print_session_list = function (session_list) {
@@ -11,9 +11,13 @@ var print_session_list = function (session_list) {
        document.getElementById("session_list").innerHTML = "No active sessions";
    }
    else {
+      var session_list_node = "";
+      session_list_node += "<table class=\"table\"><thead><tr><th>stream</th><th>source type</th><th>status</th></tr></thead><tbody>";
       for (var i = 0; i < session_list.length; i++) {
-          document.getElementById("session_list").innerHTML += print_session(session_list[i]);
+          session_list_node += print_session(session_list[i]);
       }
+      session_list_node += "</tbody></table>";
+      document.getElementById("session_list").innerHTML += session_list_node;
    }
 }
 

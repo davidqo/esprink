@@ -1,6 +1,17 @@
 {% extends "layout.dtl" %}
 {% block content %}
 <h1 align="center">ESPRINK SERVER</h1>
-<div id="session_list"></div>
+<div class="jumbotron">
+  <div class="container-fluid">
+    <div class="col-md-3">
+       <div class="panel panel-primary">
+          <div class="panel-heading">
+             <h3 class="panel-title left_heading">Active sessions</h3>
+          </div>
+          <div id="session_list" class="panel-body"/>
+       </div>
+    </div>
+  </div>
+</div>
 <script type="text/javascript" src="js/session_list.js"></script>
 {% endblock %}
