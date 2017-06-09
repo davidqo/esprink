@@ -53,16 +53,13 @@ start_link(SessionPid, Options) ->
 
 init([SessionPid, #{filename := Filename, bytes_per_sec := BytesPerSec, max_chunk_size := MaxChunkSize, session_id := SessionId}]) ->
     io:format("Init file stream reader process linked with session ~p(~p). Filename: ~p, rate bytes per second: ~p, max chunk size: ~p ~n", [SessionId, SessionPid, Filename, BytesPerSec, MaxChunkSize]),
-    self() ! init,
+    gen_server:cast(self(), init),
     {ok, #state{session_pid = SessionPid, filename = Filename, bytes_per_sec = BytesPerSec, max_chunk_size = MaxChunkSize, session_id = SessionId}}.
 
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
-handle_cast(_Request, State) ->
-    {noreply, State}.
-
-handle_info(init, State = #state{filename = Filename, current_frame = CurrentFrame, bytes_per_sec = BytesPerSec, max_chunk_size = MaxChunkSize, session_id = SessionId, session_pid = SessionPid}) ->
+handle_cast(init, State = #state{filename = Filename, current_frame = CurrentFrame, bytes_per_sec = BytesPerSec, max_chunk_size = MaxChunkSize, session_id = SessionId, session_pid = SessionPid}) ->
     ChunksPerSecond = calculate_chunks_per_second(BytesPerSec, MaxChunkSize),
     %% If we always transmit packet in MaxChunkSize the last chunk in second-interval may be much smaller
     %% then others. To avoid it we will always transmit chunk of smaller then MaxChunkSize called PreferedPacketSize.
@@ -75,6 +72,23 @@ handle_info(init, State = #state{filename = Filename, current_frame = CurrentFra
     {ok, _} = file:position(Fd, PositionInBytes),
     io:format("File stream reader process linked with session ~p(~p) will be started immidiately. Chunks per second: ~p, transmission interval: ~p, preferable chunk size: ~p~n", [SessionId, SessionPid, ChunksPerSecond, TransmissionInterval, PreferableChunkSize]),
     {{start_timer, 0}, {noreply, State#state{fd = Fd, transmission_interval = TransmissionInterval, preferable_chunk_size = PreferableChunkSize}}};
+handle_cast(#retransmit{frame_number = FrameNumber, address = Address}, State = #state{preferable_chunk_size = PreferableChunkSize, filename = Filename, session_pid = SessionPid, session_id = SessionId}) ->
+    %% For optimisation purposes we should keep this file opened for retransmission needs
+    {ok, FdOnce} = file:open(Filename, [read, binary]),
+    Offset = (FrameNumber - 1) * PreferableChunkSize,
+    {ok, _} = file:position(FdOnce, Offset),
+    case file:read(FdOnce, PreferableChunkSize) of
+        {ok, Data} ->
+            Result = #retransmit_result{frame = #frame{number = FrameNumber, body = Data}, address = Address},
+            gen_server:cast(SessionPid, Result),
+            {noreply, State};
+        Error ->
+            io:format("[ERROR] Session: ~p. Cannot retransmit frame due error: ~p", [SessionId, Error]),
+            {noreply, State}
+    end;
+handle_cast(_Request, State) ->
+    {noreply, State}.
+
 handle_info(timeout, State = #state{fd = Fd, current_frame = CurrentFrame, session_pid = SessionPid, session_id = SessionId, transmission_interval = TransmissionInterval, preferable_chunk_size = PreferableChunkSize}) ->
 %%    io:format("File stream ~p(~p) timeout occured. Current frame: ~p~n", [SessionId, SessionPid, CurrentFrame]),
     case file:read(Fd, PreferableChunkSize) of
