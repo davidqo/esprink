@@ -1,5 +1,6 @@
 REBAR=rebar
 ERLANG=erl
+BIN_DIR=bin
 
 all: deps compile testfile
 
@@ -13,7 +14,7 @@ testfile:
 	dd bs=1MB count=1 if="/dev/zero" of=testfile
 
 run:
-	$(ERLANG) -pa ebin/ deps/*/ebin -smp -s esprink
+	$(BIN_DIR)/esprink_server
 
 clean:
 	$(REBAR) clean

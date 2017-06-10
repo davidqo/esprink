@@ -33,17 +33,16 @@
 %% @end
 %%--------------------------------------------------------------------
 start() ->
-    application:ensure_all_started(cowboy),
-    Dispatch = dispatch_rules(),
-    Port = 18080,
-    {ok, _} = cowboy:start_clear(http_listener, 10,
-        [{port, Port}],
-        #{env => #{dispatch => Dispatch}}
-    ),
     application:ensure_all_started(esprink),
     application:start(esprink).
 
 start(_StartType, _StartArgs) ->
+    Dispatch = dispatch_rules(),
+    {ok, Port} = application:get_env(esprink, http_port, 8080),
+    {ok, _} = cowboy:start_clear(http_listener, 10,
+        [{port, Port}],
+        #{env => #{dispatch => Dispatch}}
+    ),
     case esprink_app_sup:start_link() of
         {ok, Pid} ->
             {ok, Pid};

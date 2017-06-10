@@ -72,7 +72,6 @@ start_link() ->
 
 -spec add_session(SessionId :: binary(), Options :: map()) -> ok | already_added.
 add_session(SessionId, Options) ->
-    io:format("Add session ~p api call with options ~p~n", [SessionId, Options]),
     validate_session_id(SessionId),
     call(#add_session{session_id = SessionId, options = Options}).
 

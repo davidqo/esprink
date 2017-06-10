@@ -9,6 +9,8 @@
 
 -behaviour(esprink_gen_timer_server).
 
+-define(DEFAULT_MAX_CHUNK_SIZE, 1200). %% 1200 bytes
+
 %% API
 -export([
     start_link/2
@@ -51,7 +53,8 @@ start_link(SessionPid, Options) ->
 %%% gen_server callbacks
 %%%===================================================================
 
-init([SessionPid, #{filename := Filename, bytes_per_sec := BytesPerSec, max_chunk_size := MaxChunkSize, session_id := SessionId}]) ->
+init([SessionPid, Options = #{filename := Filename, bytes_per_sec := BytesPerSec, session_id := SessionId}]) ->
+    MaxChunkSize = maps:get(max_chunk_size, Options, ?DEFAULT_MAX_CHUNK_SIZE),
     io:format("Init file stream reader process linked with session ~p(~p). Filename: ~p, rate bytes per second: ~p, max chunk size: ~p ~n", [SessionId, SessionPid, Filename, BytesPerSec, MaxChunkSize]),
     gen_server:cast(self(), init),
     {ok, #state{session_pid = SessionPid, filename = Filename, bytes_per_sec = BytesPerSec, max_chunk_size = MaxChunkSize, session_id = SessionId}}.

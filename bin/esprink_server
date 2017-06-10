@@ -1,0 +1,12 @@
+#!/bin/bash
+
+BIN_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+ERLANG=erl
+if [ -z "$ROOT" ]; then
+   ROOT="$BIN_DIR/.."
+fi
+
+cd $ROOT
+
+$ERLANG -name esprink@turtle -pa ebin/ deps/*/ebin -smp -s esprink -config esprink.config

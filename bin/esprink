@@ -1,0 +1,66 @@
+#!/usr/bin/escript
+
+main([Command | Args]) ->
+    net_kernel:start([script_node_name(), shortnames]),
+    Options = #{server_node_name => server_node_name()},
+    case Command of
+        "add" ->
+            add(Options, Args),
+            halt(0)
+    end;
+main(_) ->
+    io:format("esprink <Command> <Args>~n"
+    "\tSend command to esprink server~n",
+        []),
+    halt(0).
+
+add(_, ["--help"]) ->
+    io:format("esprink add <Session> <Filename> <RemoteAddress> <RemotePort> <BPS> [-i <LocalInterface>] [-p <LocalPort>] [-t <MulticastTTL>] [-m MaxChunkSize]~n"
+    "\tAdd esprink session~n"
+    "\tBPS - bytes per second"
+    "\tMaxChunkSize - max size of the transmitted chunk in bytes",
+    []),
+    halt(0);
+add(#{server_node_name := ServerNodeName}, [SessionId, Filename, RemoteAddress, RemotePort, BPS | OptionalArgs]) ->
+    try
+        CommandOptions0 = #{
+            filename => Filename,
+            remote_address => RemoteAddress,
+            remote_port => list_to_integer(RemotePort),
+            bytes_per_sec => list_to_integer(BPS)},
+        CommandOptions = add_parse_optional_args(CommandOptions0, OptionalArgs),
+        case rpc:call(ServerNodeName, esprink, add_session, [list_to_binary(SessionId), CommandOptions]) of
+            ok ->
+                ok;
+            {error, already_added} ->
+                io:format("Session ~p is already exists~n", [SessionId]);
+            {badrpc, nodedown} ->
+                io:format("Esprink server doesn't started~n", []);
+            _t ->
+                io:format("Cannot add session~n", [])
+        end
+    catch
+        _:_ ->
+            io:format("Bad command arguments: ~p~n", [erlang:get_stacktrace()]),
+            add(ignore, ["--help"])
+    end;
+add(_, _) ->
+    io:format("Bad command arguments~n", []),
+    add(ignore, ["--help"]).
+
+add_parse_optional_args(CommandOptions, []) ->
+    CommandOptions;
+add_parse_optional_args(CommandOptions, ["-i", LocalInterface | Tail]) ->
+    add_parse_optional_args(CommandOptions#{local_address => LocalInterface}, Tail);
+add_parse_optional_args(CommandOptions, ["-p", LocalPort | Tail]) ->
+    add_parse_optional_args(CommandOptions#{local_port => integer_to_list(LocalPort)}, Tail);
+add_parse_optional_args(CommandOptions, ["-t", MulticastTTL | Tail]) ->
+    add_parse_optional_args(CommandOptions#{multicast_ttl => integer_to_list(MulticastTTL)}, Tail).
+
+script_node_name() ->
+    {ok, Hostname} = inet:gethostname(),
+    list_to_atom("add_stream" ++ "@" ++ Hostname).
+
+server_node_name() ->
+    {ok, Hostname} = inet:gethostname(),
+    list_to_atom("esprink" ++ "@" ++ Hostname).
