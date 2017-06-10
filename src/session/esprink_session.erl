@@ -67,7 +67,13 @@ start_link(SessionManagerPid, SessionId, Options) ->
 %%%===================================================================
 
 init([SessionManagerPid, SessionId, Options = #{remote_address := RemoteAddress, remote_port := RemotePort}]) ->
-    LocalAddress = maps:get(local_address, Options, undefined),
+    LocalAddress0 = maps:get(local_address, Options, undefined),
+    LocalAddress = case LocalAddress0 of
+                       undefined ->
+                           get_server_local_address();
+                       _ ->
+                           LocalAddress0
+                   end,
     LocalPort = maps:get(local_port, Options, 0),
     MulticastTTL = maps:get(multicast_ttl, Options, 1),
     io:format("Init session. Session manager pid: ~p, session id: ~p, local iface: ~p, local port: ~p, remote iface: ~p, remote port: ~p~n", [SessionManagerPid, SessionId, LocalAddress, LocalPort, RemoteAddress, RemotePort]),
@@ -77,19 +83,19 @@ init([SessionManagerPid, SessionId, Options = #{remote_address := RemoteAddress,
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
-handle_cast(init, State = #state{local_address = LocalAddress, local_port = LocalPort, multicast_ttl = MulticastTTL, file_stream_options = FileStreamOptions}) ->
-    SocketOptions = case LocalAddress of
-                        undefined ->
-                            [];
-                        _ ->
-                            [{ip, LocalAddress}]
-                    end,
-
-    io:format("open(~p, ~p)~n", [LocalPort, SocketOptions]),
-    {ok, Socket} = gen_udp:open(LocalPort, [{multicast_ttl, MulticastTTL}, {active, once}, binary | SocketOptions]),
+handle_cast(init, State = #state{local_address = LocalAddress0, local_port = LocalPort0, multicast_ttl = MulticastTTL, file_stream_options = FileStreamOptions}) ->
+    {ok, LocalAddress} = inet:parse_address(LocalAddress0),
+    {ok, Socket} = gen_udp:open(LocalPort0, [{multicast_ttl, MulticastTTL}, {active, once}, binary, {ip, LocalAddress}]),
+    %% if local port was 0, we can now know its actual values
+    {ok, LocalPort} = inet:port(Socket),
     {ok, FileStreamPid} = esprink_stream_reader_file:start_link(self(), FileStreamOptions),
     %% Now we no more need file stream options
-    {noreply, State#state{socket = Socket, file_stream_options = undefined, file_stream_pid = FileStreamPid}};
+    {noreply, State#state{socket = Socket, file_stream_options = undefined, file_stream_pid = FileStreamPid, local_port = LocalPort}};
+handle_cast(Frame = #stream_info{info = Info}, State = #state{id = Id, session_manager_pid = SessionManagerPid, local_address = LocalAddress, local_port = LocalPort}) ->
+    io:format("Session ~p stream info received: ~p. Transfer it to session manager~n", [Id, Info]),
+    %% We should update local address in session manager if it is not set yet
+    gen_server:cast(SessionManagerPid, Frame#stream_info{info = Info#{local_address => LocalAddress, local_port => LocalPort}}),
+    {noreply, State};
 handle_cast(Frame = #frame{}, State = #state{id = _Id, socket = Socket, remote_port = RemotePort, remote_address = RemoteAddress}) ->
     send_frame(Socket, RemoteAddress, RemotePort, Frame),
     {noreply, State};
@@ -125,3 +131,9 @@ send_frame(Socket, RemoteAddress, RemotePort, #frame{number = Number, body = Bod
     BinaryFrame = <<Number:64, Body/binary>>,
 %%    io:format("Session ~p to received frame with number ~p and send it to ~p~n", [Id, Number, {RemoteAddress, RemotePort}]),
     ok = gen_udp:send(Socket, RemoteAddress, RemotePort, BinaryFrame).
+
+get_server_local_address() ->
+    {ok, List} = inet:getif(),
+    {IpAddr, _, _} = hd(List),
+    Tokens = [integer_to_list(X) || X <- tuple_to_list(IpAddr)],
+    string:join(Tokens, ".").

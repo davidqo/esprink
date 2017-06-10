@@ -1,3 +1,8 @@
+-record(stream_info, {
+    session_id :: binary(),
+    info = #{}
+}).
+
 -record(frame, {
     number :: pos_integer(),
     body :: binary()

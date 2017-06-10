@@ -38,7 +38,7 @@ start() ->
 
 start(_StartType, _StartArgs) ->
     Dispatch = dispatch_rules(),
-    {ok, Port} = application:get_env(esprink, http_port, 8080),
+    Port = application:get_env(esprink, http_port, 8080),
     {ok, _} = cowboy:start_clear(http_listener, 10,
         [{port, Port}],
         #{env => #{dispatch => Dispatch}}
@@ -88,6 +88,7 @@ dispatch_rules() ->
             static_content_rule("fonts"),
             {"/", esprink_index_handler, []},
             {"/session_list", esprink_session_list_handler, []},
+            {"/session_metadata", esprink_session_metadata_handler, []},
             {'_', esprink_notfound_handler, []}
         ]}
     ]).
