@@ -1,4 +1,7 @@
 # esprink
+
+TODO: This readme file is totally outdated. I will overwrite it soon
+
 File caster server.
 
 Client doesn't implemented yet.
