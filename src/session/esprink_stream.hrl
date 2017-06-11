@@ -10,10 +10,12 @@
 
 -record(retransmit, {
     frame_number :: pos_integer(),
-    address :: term()
+    address :: term(),
+    sequence_number :: pos_integer()
 }).
 
 -record(retransmit_result, {
     frame :: #frame{},
-    address :: term()
+    address :: term(),
+    sequence_number :: pos_integer()
 }).

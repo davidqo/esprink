@@ -52,7 +52,11 @@
     multicast_ttl :: pos_integer(),
     socket :: term(),
     file_stream_options :: #{},
-    file_stream_pid :: pid()
+    file_stream_pid :: pid(),
+    sequence_number = 1 :: pos_integer(),
+    first_frame_number = undefined :: undefined | pos_integer(),
+    current_frame_number = undefined :: undefined | pos_integer(),
+    last_frame_number = undefined :: undefined | pos_integer()
 }).
 
 %%%===================================================================
@@ -97,18 +101,21 @@ handle_cast(Frame = #stream_info{info = Info}, State = #state{id = Id, session_m
     gen_server:cast(SessionManagerPid, Frame#stream_info{info = Info#{local_address => LocalAddress, local_port => LocalPort}}),
     {noreply, State};
 handle_cast(Frame = #frame{}, State = #state{id = _Id, socket = Socket, remote_port = RemotePort, remote_address = RemoteAddress}) ->
-    send_frame(Socket, RemoteAddress, RemotePort, Frame),
-    {noreply, State};
-handle_cast(#retransmit_result{frame = Frame, address = {RemoteAddress, RemotePort}}, State = #state{socket = Socket}) ->
+    State2 = #state{sequence_number = SequenceNumber} = update_sequence_info(Frame, State),
+    send_frame(Socket, RemoteAddress, RemotePort, SequenceNumber, Frame),
+    {noreply, State2};
+handle_cast(#retransmit_result{frame = Frame, address = {RemoteAddress, RemotePort}, sequence_number = SequenceNumber}, State = #state{socket = Socket}) ->
     inet:setopts(Socket, [{active, once}]),
-    send_frame(Socket, RemoteAddress, RemotePort, Frame),
+    send_frame(Socket, RemoteAddress, RemotePort, SequenceNumber, Frame),
     {noreply, State};
 handle_cast(_Request, State) ->
     {noreply, State}.
 
-handle_info({udp, _, Address, Port, << ?RETRANSMIT_CODE:8, FrameNumber:64>>}, State = #state{file_stream_pid = FileStreamPid}) ->
-    %% For simplicity process only single retransmit request at once
-    gen_server:cast(FileStreamPid, #retransmit{frame_number = FrameNumber, address = {Address, Port}}),
+handle_info({udp, _, Address, Port, << ?RETRANSMIT_CODE:8, SequenceNumber:64>>}, State = #state{file_stream_pid = FileStreamPid}) ->
+    %% For simplicity process only single retransmit request at once.
+    %% It provided by {active, once} option.`
+    FrameNumber = frame_number_by_sequence_number(SequenceNumber, State),
+    gen_server:cast(FileStreamPid, #retransmit{frame_number = FrameNumber, address = {Address, Port}, sequence_number = SequenceNumber}),
     {noreply, State#state{}};
 handle_info(Info, State = #state{socket = Socket}) ->
     inet:setopts(Socket, [{active, once}]),
@@ -127,8 +134,8 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
-send_frame(Socket, RemoteAddress, RemotePort, #frame{number = Number, body = Body}) ->
-    BinaryFrame = <<Number:64, Body/binary>>,
+send_frame(Socket, RemoteAddress, RemotePort, SequenceNumber, #frame{number = Number, body = Body}) ->
+    BinaryFrame = <<SequenceNumber:64, Number:64, Body/binary>>,
 %%    io:format("Session ~p to received frame with number ~p and send it to ~p~n", [Id, Number, {RemoteAddress, RemotePort}]),
     ok = gen_udp:send(Socket, RemoteAddress, RemotePort, BinaryFrame).
 
@@ -137,3 +144,28 @@ get_server_local_address() ->
     {IpAddr, _, _} = hd(List),
     Tokens = [integer_to_list(X) || X <- tuple_to_list(IpAddr)],
     string:join(Tokens, ".").
+
+%% First frame
+update_sequence_info(#frame{number = Number}, State = #state{first_frame_number = undefined}) ->
+    State#state{first_frame_number = Number, current_frame_number = Number, sequence_number = 1};
+update_sequence_info(#frame{number = Number}, State = #state{first_frame_number = FirstFrameNumber, current_frame_number = PrevFrameNumber, sequence_number = SequenceNumber}) ->
+    State2 = case Number of
+                %% Streaming was started from the beginning
+                _ when (Number == FirstFrameNumber) ->
+                    State#state{current_frame_number = Number, last_frame_number = PrevFrameNumber};
+                _ ->
+                    State#state{current_frame_number = Number}
+            end,
+    State2#state{sequence_number = SequenceNumber + 1}.
+
+frame_number_by_sequence_number(SequenceNumber, #state{first_frame_number = FirstFrameNumber, last_frame_number = LastFrameNumber}) ->
+    %% Stream could be started not from frame_number = 1
+    Offset = SequenceNumber + (FirstFrameNumber - 1),
+    case LastFrameNumber of
+        %% Last frame not yet discovered
+        undefined ->
+            Offset;
+        _ ->
+            Offset rem LastFrameNumber
+    end.
+

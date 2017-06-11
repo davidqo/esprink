@@ -78,18 +78,20 @@ handle_cast(init, State = #state{filename = Filename, current_frame = CurrentFra
     io:format("File stream reader process linked with session ~p(~p) will be started immidiately. Chunks per second: ~p, transmission interval: ~p, preferable chunk size: ~p~n", [SessionId, SessionPid, ChunksPerSecond, TransmissionInterval, PreferableChunkSize]),
     gen_server:cast(SessionPid, #stream_info{session_id = SessionId, info = #{file_size => FileSize, md5_checksum => MD5Checksum}}),
     {{start_timer, 0}, {noreply, State#state{fd = Fd, transmission_interval = TransmissionInterval, preferable_chunk_size = PreferableChunkSize}}};
-handle_cast(#retransmit{frame_number = FrameNumber, address = Address}, State = #state{preferable_chunk_size = PreferableChunkSize, filename = Filename, session_pid = SessionPid, session_id = SessionId}) ->
+handle_cast(#retransmit{frame_number = FrameNumber, address = Address, sequence_number = SequenceNumber}, State = #state{preferable_chunk_size = PreferableChunkSize, filename = Filename, session_pid = SessionPid, session_id = SessionId}) ->
     %% For optimisation purposes we should keep this file opened for retransmission needs
     {ok, FdOnce} = file:open(Filename, [read, binary]),
     Offset = (FrameNumber - 1) * PreferableChunkSize,
     {ok, _} = file:position(FdOnce, Offset),
     case file:read(FdOnce, PreferableChunkSize) of
         {ok, Data} ->
-            Result = #retransmit_result{frame = #frame{number = FrameNumber, body = Data}, address = Address},
+            Result = #retransmit_result{frame = #frame{number = FrameNumber, body = Data}, address = Address, sequence_number = SequenceNumber},
             gen_server:cast(SessionPid, Result),
+            file:close(FdOnce),
             {noreply, State};
         Error ->
             io:format("[ERROR] Session: ~p. Cannot retransmit frame due error: ~p", [SessionId, Error]),
+            file:close(FdOnce),
             {noreply, State}
     end;
 handle_cast(_Request, State) ->

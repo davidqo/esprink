@@ -36,7 +36,7 @@ add(#{server_node_name := ServerNodeName}, [SessionId, Filename, RemoteAddress, 
                 io:format("Session ~p is already exists~n", [SessionId]);
             {badrpc, nodedown} ->
                 io:format("Esprink server doesn't started~n", []);
-            _t ->
+            _ ->
                 io:format("Cannot add session~n", [])
         end
     catch
