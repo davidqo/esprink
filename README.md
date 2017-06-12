@@ -1,50 +1,67 @@
 # esprink
 
-TODO: This readme file is totally outdated. I will overwrite it soon
-
 File caster server.
-
-Client doesn't implemented yet.
 
 To build server you need:
 ```
 git clone
 make
 ```
-Currently the only one way to start streaming:
+Start server
 ```
 make run
 ```
-And enter this code in opened erlang console:
-
-```erlang
-esprink:add_session(<<"session1">>, #{filename => "testfile", bytes_per_sec => 1024, max_chunk_size => 512, remote_port => 1111, remote_address => "192.168.23.46"}).
+or
 ```
+bin/esprink_server
+```
+Default HTTP port is 8081. To start server on another port edit esprink.config
 
-Optionally you can specify local_address and local_port options.
+To start new session
+```
+esprink add --help
+esprink add <Session> <Filename> <RemoteAddress> <RemotePort> <BPS> [-i <LocalInterface>] [-p <LocalPort>] [-t <MulticastTTL>] [-m MaxChunkSize]
+	Add esprink session
+	BPS - bytes per second
+  MaxChunkSize - max size of the transmitted chunk in bytes
+```
+So
+```
+bin/esprink add session1 example.file 224.0.0.125 12345 1024
+```
+will start new session streaming 'example.file' to multicast group 224.0.0.125 to port 12345 sending 1024 bytes per second.
 
-It doesn't support multicast yet, but designed for this
+Optionally you can specify -i -p and -t options. Multicast TTL is 1 by default
+
+To start client
+```
+esprink_client <ServerURL> <SessionId> [-l <LocalAddress>] [-p <LocalPort>] [-L <LostPercentage>]
+        LostPercentage - If specified client will simulate packet lost for retransmission mechanism testing. By default 0
+```
+So
+```
+esprink/bin/esprink_client http://192.168.1.136:8081 session1
+```
+will request server 192.168.1.136 for session metadata and start receiving relying on the information received from the server.
+
+Optionally you can specify -l -p and -L options.
+
+Lost percentage flag (-L) allows to simulate transmission losses.
 
 What is supported:
 
 1. Run several streams simultaneously
-1. Run different sterams with different bytes_per_sec and max_chunk_size options
+1. Run different sterams with different BPS and MaxChunkSize options
 1. Using the same file in the different streams
-1. Fault-tolerance code
+1. Fault-tolerant code
+1. Console command with command line interface
 1. Draft HTTP server for currently running sessions monitoring
 
 What is not yet implemented, but designed for:
 
-1. Client. You can analize streams only through wireshark
-1. Console command with command line interface
-1. ~~HTTP Server, showing currently running streams~~
-1. Multicast streaming
-1. Retransmissions on demand
 1. Release building
 1. Logging
 
 NOTES:
 
-I purposely use bytes_per_second instead of bps because of the ambiguity of the latter (bytes_per_second? bits_per_second? bits_per_sample?).
-
-TODO: Move web server to the separate node
+I purposely use bytes_per_second instead of bps because of the ambiguity of the latter (bytes_per_second? bits_per_second? bits_per_sample?)
