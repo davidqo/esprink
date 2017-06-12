@@ -55,6 +55,7 @@
     file_stream_pid :: pid(),
     sequence_number = 1 :: pos_integer(),
     first_frame_number = undefined :: undefined | pos_integer(),
+    first_sequence_number = undefined :: undefined | pos_integer(),
     current_frame_number = undefined :: undefined | pos_integer(),
     last_frame_number = undefined :: undefined | pos_integer()
 }).
@@ -102,10 +103,12 @@ handle_cast(Frame = #stream_info{info = Info}, State = #state{id = Id, session_m
     {noreply, State};
 handle_cast(Frame = #frame{}, State = #state{id = _Id, socket = Socket, remote_port = RemotePort, remote_address = RemoteAddress}) ->
     State2 = #state{sequence_number = SequenceNumber} = update_sequence_info(Frame, State),
+    io:format("Send frame. Sequence number: ~p, frame: ~p~n", [SequenceNumber, Frame]),
     send_frame(Socket, RemoteAddress, RemotePort, SequenceNumber, Frame),
     {noreply, State2};
 handle_cast(#retransmit_result{frame = Frame, address = {RemoteAddress, RemotePort}, sequence_number = SequenceNumber}, State = #state{socket = Socket}) ->
     inet:setopts(Socket, [{active, once}]),
+    io:format("Re-transmit frame. Sequence number: ~p, frame: ~p~n", [SequenceNumber, Frame]),
     send_frame(Socket, RemoteAddress, RemotePort, SequenceNumber, Frame),
     {noreply, State};
 handle_cast(_Request, State) ->
@@ -114,12 +117,13 @@ handle_cast(_Request, State) ->
 handle_info({udp, _, Address, Port, << ?RETRANSMIT_CODE:8, SequenceNumber:64>>}, State = #state{file_stream_pid = FileStreamPid}) ->
     %% For simplicity process only single retransmit request at once.
     %% It provided by {active, once} option.`
+    io:format("Retransmit sequence number: ~p~n", [SequenceNumber]),
     FrameNumber = frame_number_by_sequence_number(SequenceNumber, State),
     gen_server:cast(FileStreamPid, #retransmit{frame_number = FrameNumber, address = {Address, Port}, sequence_number = SequenceNumber}),
     {noreply, State#state{}};
 handle_info(Info, State = #state{socket = Socket}) ->
     inet:setopts(Socket, [{active, once}]),
-    io:format("Unknown handle_info message: ~p", [Info]),
+    io:format("Unknown handle_info message: ~p~n", [Info]),
     {noreply, State}.
 
 -spec(terminate(Reason :: (normal | shutdown | {shutdown, term()} | term()),
@@ -147,7 +151,8 @@ get_server_local_address() ->
 
 %% First frame
 update_sequence_info(#frame{number = Number}, State = #state{first_frame_number = undefined}) ->
-    State#state{first_frame_number = Number, current_frame_number = Number, sequence_number = 1};
+    %% First frame sequence number should be random
+    State#state{first_frame_number = Number, first_sequence_number = 1, current_frame_number = Number, sequence_number = 1};
 update_sequence_info(#frame{number = Number}, State = #state{first_frame_number = FirstFrameNumber, current_frame_number = PrevFrameNumber, sequence_number = SequenceNumber}) ->
     State2 = case Number of
                 %% Streaming was started from the beginning
@@ -158,14 +163,18 @@ update_sequence_info(#frame{number = Number}, State = #state{first_frame_number 
             end,
     State2#state{sequence_number = SequenceNumber + 1}.
 
-frame_number_by_sequence_number(SequenceNumber, #state{first_frame_number = FirstFrameNumber, last_frame_number = LastFrameNumber}) ->
+frame_number_by_sequence_number(SequenceNumber, #state{first_frame_number = FirstFrameNumber, first_sequence_number = FirstFrameSequenceNumber, last_frame_number = LastFrameNumber}) ->
     %% Stream could be started not from frame_number = 1
-    Offset = SequenceNumber + (FirstFrameNumber - 1),
     case LastFrameNumber of
         %% Last frame not yet discovered
         undefined ->
-            Offset;
+            FirstFrameNumber + (SequenceNumber - FirstFrameSequenceNumber);
         _ ->
-            Offset rem LastFrameNumber
+            case (SequenceNumber - (FirstFrameSequenceNumber - 1)) rem LastFrameNumber of
+                0 ->
+                    LastFrameNumber;
+                FrameNumber ->
+                    FrameNumber
+            end
     end.
 

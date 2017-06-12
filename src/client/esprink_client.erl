@@ -111,14 +111,6 @@ init([Options = #{server_url := ServerURL, session_id := SessionId}]) ->
       {stop, Error}
   end.
 
-%%{add_membership, {MulticastGroupAddress, {0,0,0,0}}}
-
-handle_call(retransmit, _From, State = #state{}) ->
-  {reply, not_supported, State};
-%%handle_call(retransmit, _From, State = #state{server_address = ServerAddress, server_port =
-%%ServerPort, socket = Socket}) ->
-%%  gen_udp:send(Socket, ServerAddress, ServerPort, <<1:8, 10:64>>),
-%%  {reply, ok, State};
 handle_call(Request, _From, State) ->
   io:format("Call: ~p~n", [Request]),
   {reply, ok, State}.
@@ -157,9 +149,22 @@ handle_info({http, _} = Reply, State = #state{from_cli = FromCli, owner_ref = Ow
   try_notify_failure(FromCli, OwnerRef),
   {stop, normal, State};
 %% Initial frame
-handle_info({udp, _, _, _, Data}, State) ->
+handle_info({udp, _, _, _, Data}, State = #state{lost_percentage = LostPercentage}) ->
   <<SequenceNumber:64, FrameNumber:64, FrameData/binary>> = Data,
-  process_frame(SequenceNumber, FrameNumber, FrameData, State);
+  case LostPercentage of
+    0 ->
+      process_frame(SequenceNumber, FrameNumber, FrameData, State);
+    _ ->
+      case rand:uniform(100) of
+        %% Packet lost
+        X when (X =< LostPercentage) ->
+          io:format("Drop frame seq: ~p num: ~p data: ~p~n", [SequenceNumber, FrameNumber, FrameData]),
+          {noreply, State};
+        _ ->
+          io:format("Process frame seq: ~p num: ~p data: ~p~n", [SequenceNumber, FrameNumber, FrameData]),
+          process_frame(SequenceNumber, FrameNumber, FrameData, State)
+      end
+  end;
 handle_info(Info, State) ->
   io:format("Info: ~p~n", [Info]),
   {noreply, State}.

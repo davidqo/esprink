@@ -70,7 +70,7 @@ handle_cast(init, State = #state{filename = Filename, current_frame = CurrentFra
     PreferableChunkSize = trunc(BytesPerSec / ChunksPerSecond),
     TransmissionInterval = 1000 div ChunksPerSecond,
     %%% Stream can start not only from the beginning of the file.
-    PositionInBytes = CurrentFrame * PreferableChunkSize,
+    PositionInBytes = (CurrentFrame - 1) * PreferableChunkSize,
     MD5Checksum = esprink_file_utils:calculate_md5(Filename),
     FileSize = esprink_file_utils:size(Filename),
     {ok, Fd} = file:open(Filename, [read, binary]),
@@ -82,9 +82,11 @@ handle_cast(#retransmit{frame_number = FrameNumber, address = Address, sequence_
     %% For optimisation purposes we should keep this file opened for retransmission needs
     {ok, FdOnce} = file:open(Filename, [read, binary]),
     Offset = (FrameNumber - 1) * PreferableChunkSize,
+    io:format("Retransmit frame: ~p, offset: ~p, preferable chunk size: ~p~n", [FrameNumber, Offset, PreferableChunkSize]),
     {ok, _} = file:position(FdOnce, Offset),
     case file:read(FdOnce, PreferableChunkSize) of
         {ok, Data} ->
+            io:format("Retransmit data: ~p~n", [Data]),
             Result = #retransmit_result{frame = #frame{number = FrameNumber, body = Data}, address = Address, sequence_number = SequenceNumber},
             gen_server:cast(SessionPid, Result),
             file:close(FdOnce),

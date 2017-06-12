@@ -53,7 +53,7 @@ process_frame(FrameSN, FrameNumber, FrameData, Buffer = #buffer{frames = Frames,
             %% There are missed frames
             X when X > 1 ->
                 NewMissedFrames = lists:seq(SN + 1, FrameSN - 1),
-                io:format("There are missed frames: ~p~n", [NewMissedFrames]),
+                io:format("There are missed frames: ~w~n", [NewMissedFrames]),
                 Buffer#buffer{frames = store_frame(Frame, Frames), missed_frames = lists:umerge([NewMissedFrames, MissedFrames]), sn = FrameSN};
             %% Retransmission
             _ ->
@@ -67,6 +67,7 @@ process_frame(FrameSN, FrameNumber, FrameData, Buffer = #buffer{frames = Frames,
                         Buffer#buffer{frames = store_frame(Frame, Frames), missed_frames = MissedFrames -- [FrameSN]}
                 end
         end,
+    io:format("Frames: ~p~n", [Buffer2#buffer.frames]),
     try_write_frames(Buffer2).
 
 %% Expected amount of bytes was written
@@ -109,7 +110,7 @@ try_write_frames(Buffer = #buffer{frames = [F = #frame{sn = SN} | T], lwf_sn = L
             io:format("Write frame: ~p~n", [SN]),
             try_write_frames(do_write(F, Buffer#buffer{frames = T}));
         _ ->
-            io:format("There is hole between frames. Waiting for retransmit. SN: ~p, LWF: ~p~n", [SN, LWF]),
+            io:format("There is hole between frames. Waiting for retransmit. Least stored frame SN: ~p, LWF: ~p~n", [SN, LWF]),
             {ok, Buffer}
     end.
 
