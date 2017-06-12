@@ -158,10 +158,10 @@ handle_info({udp, _, _, _, Data}, State = #state{lost_percentage = LostPercentag
       case rand:uniform(100) of
         %% Packet lost
         X when (X =< LostPercentage) ->
-          io:format("Drop frame seq: ~p num: ~p data: ~p~n", [SequenceNumber, FrameNumber, FrameData]),
+          %% io:format("Drop frame seq: ~p num: ~p data: ~p~n", [SequenceNumber, FrameNumber, FrameData]),
           {noreply, State};
         _ ->
-          io:format("Process frame seq: ~p num: ~p data: ~p~n", [SequenceNumber, FrameNumber, FrameData]),
+          %% io:format("Process frame seq: ~p num: ~p data: ~p~n", [SequenceNumber, FrameNumber, FrameData]),
           process_frame(SequenceNumber, FrameNumber, FrameData, State)
       end
   end;

@@ -48,26 +48,26 @@ process_frame(FrameSN, FrameNumber, FrameData, Buffer = #buffer{frames = Frames,
         case FrameSN - SN of
             %% This is the next frame
             1 ->
-                io:format("Next frame received ~p~n", [FrameSN]),
+                %%io:format("Next frame received ~p~n", [FrameSN]),
                 Buffer#buffer{frames = store_frame(Frame, Frames), missed_frames = MissedFrames -- [FrameSN], sn = FrameSN};
             %% There are missed frames
             X when X > 1 ->
                 NewMissedFrames = lists:seq(SN + 1, FrameSN - 1),
-                io:format("There are missed frames: ~w~n", [NewMissedFrames]),
+                %%io:format("There are missed frames: ~w~n", [NewMissedFrames]),
                 Buffer#buffer{frames = store_frame(Frame, Frames), missed_frames = lists:umerge([NewMissedFrames, MissedFrames]), sn = FrameSN};
             %% Retransmission
             _ ->
                 case LWF >= FrameSN of
                     %% This frame was already written
                     true ->
-                        io:format("Frame ~p already was processed. LWF ~p~n", [FrameSN, LWF]),
+                        %%io:format("Frame ~p already was processed. LWF ~p~n", [FrameSN, LWF]),
                         Buffer;
                     false ->
                         io:format("Frame ~p was retransmitted. LWF ~p~n", [FrameSN, LWF]),
                         Buffer#buffer{frames = store_frame(Frame, Frames), missed_frames = MissedFrames -- [FrameSN]}
                 end
         end,
-    io:format("Frames: ~p~n", [Buffer2#buffer.frames]),
+    %% io:format("Frames: ~p~n", [Buffer2#buffer.frames]),
     try_write_frames(Buffer2).
 
 %% Expected amount of bytes was written

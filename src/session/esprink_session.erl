@@ -103,12 +103,12 @@ handle_cast(Frame = #stream_info{info = Info}, State = #state{id = Id, session_m
     {noreply, State};
 handle_cast(Frame = #frame{}, State = #state{id = _Id, socket = Socket, remote_port = RemotePort, remote_address = RemoteAddress}) ->
     State2 = #state{sequence_number = SequenceNumber} = update_sequence_info(Frame, State),
-    io:format("Send frame. Sequence number: ~p, frame: ~p~n", [SequenceNumber, Frame]),
+    %%io:format("Send frame. Sequence number: ~p, frame: ~p~n", [SequenceNumber, Frame]),
     send_frame(Socket, RemoteAddress, RemotePort, SequenceNumber, Frame),
     {noreply, State2};
 handle_cast(#retransmit_result{frame = Frame, address = {RemoteAddress, RemotePort}, sequence_number = SequenceNumber}, State = #state{socket = Socket}) ->
     inet:setopts(Socket, [{active, once}]),
-    io:format("Re-transmit frame. Sequence number: ~p, frame: ~p~n", [SequenceNumber, Frame]),
+    %%io:format("Re-transmit frame. Sequence number: ~p, frame: ~p~n", [SequenceNumber, Frame]),
     send_frame(Socket, RemoteAddress, RemotePort, SequenceNumber, Frame),
     {noreply, State};
 handle_cast(_Request, State) ->
