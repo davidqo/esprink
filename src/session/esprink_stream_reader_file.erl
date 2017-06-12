@@ -86,7 +86,7 @@ handle_cast(#retransmit{frame_number = FrameNumber, address = Address, sequence_
     {ok, _} = file:position(FdOnce, Offset),
     case file:read(FdOnce, PreferableChunkSize) of
         {ok, Data} ->
-            io:format("Retransmit data: ~p~n", [Data]),
+            %%io:format("Retransmit data: ~p~n", [Data]),
             Result = #retransmit_result{frame = #frame{number = FrameNumber, body = Data}, address = Address, sequence_number = SequenceNumber},
             gen_server:cast(SessionPid, Result),
             file:close(FdOnce),
