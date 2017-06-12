@@ -77,11 +77,13 @@ try_write_frames(Buffer = #buffer{size_written = SizeWritten, expected_size = Ex
     case LoopOccured of
         true ->
             io:format("Combine result partial files in a single file~n", []),
-            FdEnd = file:open(Filename ++ ".part1", [read]),
-            file:copy(FdEnd, FdBegin),
+            {ok, FdEnd} = file:open(Filename ++ ".part1", [read]),
+            Ret = file:copy(FdEnd, FdBegin),
+            io:format("Copy result: ~p~n", [Ret]),
             file:sync(FdBegin),
             file:close(FdEnd),
             file:close(FdBegin),
+            file:delete(Filename ++ ".part1"),
             file:rename(Filename ++ ".part2", Filename);
         false ->
             io:format("Rename single partial file~n", []),

@@ -27,7 +27,7 @@ esprink add <Session> <Filename> <RemoteAddress> <RemotePort> <BPS> [-i <LocalIn
 ```
 So
 ```
-bin/esprink add session1 example.file 224.0.0.125 12345 1024
+bin/esprink add session1 esprink.png 224.0.0.125 12345 1024
 ```
 will start new session streaming 'example.file' to multicast group 224.0.0.125 to port 12345 sending 1024 bytes per second.
 
