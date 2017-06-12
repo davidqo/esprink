@@ -33,6 +33,10 @@ will start new session streaming 'example.file' to multicast group 224.0.0.125 t
 
 Optionally you can specify -i -p and -t options. Multicast TTL is 1 by default
 
+You can see currently running sessions in your browser:
+
+![esprink.png](esprink.png)
+
 To start client
 ```
 esprink_client <ServerURL> <SessionId> [-l <LocalAddress>] [-p <LocalPort>] [-L <LostPercentage>]
