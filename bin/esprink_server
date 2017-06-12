@@ -9,4 +9,4 @@ fi
 
 cd $ROOT
 
-$ERLANG -name esprink@turtle -pa ebin/ deps/*/ebin -smp -s esprink -config esprink.config
+$ERLANG -sname esprink -pa ebin/ deps/*/ebin -smp -s esprink -config esprink.config

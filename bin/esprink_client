@@ -8,4 +8,4 @@ if [ -z "$ROOT" ]; then
    ROOT="$BIN_DIR/.."
 fi
 
-ERL_CRASH_DUMP_BYTES=0 $ERLANG -name esprink_client@turtle -pa $ROOT/ebin/ $ROOT/deps/*/ebin -smp -s esprink_client start_link_from_cli -extra $@
+ERL_CRASH_DUMP_BYTES=0 $ERLANG -sname esprink_client -pa $ROOT/ebin/ $ROOT/deps/*/ebin -smp -s esprink_client start_link_from_cli -extra $@
