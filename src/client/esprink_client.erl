@@ -148,7 +148,7 @@ handle_info({http, _} = Reply, State = #state{from_cli = FromCli, owner_ref = Ow
   io:format("Cannot get metadata from reply: ~p~n", [Reply]),
   try_notify_failure(FromCli, OwnerRef),
   {stop, normal, State};
-%% Initial frame
+%% Frame received
 handle_info({udp, _, _, _, Data}, State = #state{lost_percentage = LostPercentage}) ->
   <<SequenceNumber:64, FrameNumber:64, FrameData/binary>> = Data,
   case LostPercentage of
